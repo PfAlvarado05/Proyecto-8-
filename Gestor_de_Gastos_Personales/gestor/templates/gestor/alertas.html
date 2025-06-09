@@ -1,0 +1,13 @@
+{% extends 'gestor/base.html' %}
+{% block content %}
+<h2>Alertas de Presupuesto</h2>
+{% if alertas %}
+  <ul>
+    {% for alerta in alertas %}
+      <li style="color:red;">¡Alerta! Has gastado {{ alerta.porcentaje }}% del presupuesto para {{ alerta.categoria }} ({{ alerta.gastado }} / {{ alerta.limite }})</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No hay alertas en este momento.</p>
+{% endif %}
+{% endblock %}
