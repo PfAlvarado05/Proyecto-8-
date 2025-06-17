@@ -68,6 +68,62 @@ def dashboard(request):
     return render(request, 'gestor/dashboard.html', context)
 
 
+@login_required
+def agregar_categoria(request):
+    if request.method == 'POST':
+        form = CategoriaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Categoría agregada con éxito.')
+            return redirect('dashboard')
+    else:
+        form = CategoriaForm()
+    return render(request, 'gestor/agregar_categoria.html', {'form': form})
+
+
+@login_required
+def agregar_transaccion(request):
+    if request.method == 'POST':
+        form = TransaccionForm(request.POST)
+        if form.is_valid():
+            transaccion = form.save(commit=False)
+            transaccion.usuario = request.user
+            transaccion.save()
+            messages.success(request, 'Transacción agregada con éxito.')
+            return redirect('dashboard')
+    else:
+        form = TransaccionForm()
+    return render(request, 'gestor/agregar_gasto.html', {'form': form})
+
+
+@login_required
+def agregar_presupuesto(request):
+    if request.method == 'POST':
+        form = PresupuestoForm(request.POST)
+        if form.is_valid():
+            presupuesto = form.save(commit=False)
+            presupuesto.usuario = request.user
+            presupuesto.save()
+            messages.success(request, 'Presupuesto agregado con éxito.')
+            return redirect('dashboard')
+    else:
+        form = PresupuestoForm()
+    return render(request, 'gestor/crear_presupuesto.html', {'form': form})
+
+
+@login_required
+def agregar_ingreso(request):
+    if request.method == 'POST':
+        form = IngresoForm(request.POST)
+        if form.is_valid():
+            ingreso = form.save(commit=False)
+            ingreso.usuario = request.user
+            ingreso.save()
+            messages.success(request, 'Ingreso agregado con éxito.')
+            return redirect('dashboard')
+    else:
+        form = IngresoForm()
+    return render(request, 'gestor/agregar_ingreso.html', {'form': form})
 
 
 @login_required
