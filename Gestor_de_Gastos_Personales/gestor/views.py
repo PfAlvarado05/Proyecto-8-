@@ -56,6 +56,7 @@ def logout_usuario(request):
 
 @login_required
 def dashboard(request):
+    # Datos resumen para mostrar en el dashboard
     total_gastos = Transaccion.objects.filter(usuario=request.user).aggregate(total=Sum('monto'))['total'] or 0
     total_ingresos = Ingreso.objects.filter(usuario=request.user).aggregate(total=Sum('monto'))['total'] or 0
     balance = total_ingresos - total_gastos
@@ -65,6 +66,9 @@ def dashboard(request):
         'balance': balance,
     }
     return render(request, 'gestor/dashboard.html', context)
+
+
+
 
 @login_required
 def grafico_gastos(request):
@@ -110,3 +114,68 @@ def alertas_presupuesto(request):
         'alertas': alertas,
     })
 
+
+@login_required
+def filtrar_transacciones(request):
+    form = FiltroFechaForm(request.GET or None)
+    transacciones = Transaccion.objects.filter(usuario=request.user).order_by('-fecha')
+    ingresos = Ingreso.objects.filter(usuario=request.user).order_by('-fecha')
+
+    if form.is_valid():
+        fecha_inicio = form.cleaned_data.get('fecha_inicio')
+        fecha_fin = form.cleaned_data.get('fecha_fin')
+        if fecha_inicio:
+            transacciones = transacciones.filter(fecha__gte=fecha_inicio)
+            ingresos = ingresos.filter(fecha__gte=fecha_inicio)
+        if fecha_fin:
+            transacciones = transacciones.filter(fecha__lte=fecha_fin)
+            ingresos = ingresos.filter(fecha__lte=fecha_fin)
+
+    context = {
+        'transacciones': transacciones,
+        'ingresos': ingresos,
+        'form': form,
+    }
+    return render(request, 'gestor/filtro.html', context)
+
+
+@login_required
+def exportar_pdf(request):
+    transacciones = Transaccion.objects.filter(usuario=request.user)
+    ingresos = Ingreso.objects.filter(usuario=request.user)
+    template_path = 'gestor/pdf_template.html'
+    context = {'transacciones': transacciones, 'ingresos': ingresos, 'usuario': request.user}
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="reporte_gastos_ingresos.pdf"'
+    template = get_template(template_path)
+    html = template.render(context)
+
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    if pisa_status.err:
+        return HttpResponse('Error al generar PDF <pre>' + html + '</pre>')
+    return response
+
+
+@login_required
+def exportar_excel(request):
+    transacciones = Transaccion.objects.filter(usuario=request.user)
+    ingresos = Ingreso.objects.filter(usuario=request.user)
+
+    wb = openpyxl.Workbook()
+    ws1 = wb.active
+    ws1.title = "Transacciones"
+    ws1.append(['Categoría', 'Monto', 'Fecha', 'Descripción'])
+    for t in transacciones:
+        ws1.append([t.categoria.nombre, float(t.monto), t.fecha.strftime('%Y-%m-%d'), t.descripcion])
+
+    ws2 = wb.create_sheet(title="Ingresos")
+    ws2.append(['Monto', 'Fecha', 'Descripción'])
+    for i in ingresos:
+        ws2.append([float(i.monto), i.fecha.strftime('%Y-%m-%d'), i.descripcion])
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="reporte_gastos_ingresos.xlsx"'
+    output = BytesIO()
+    wb.save(output)
+    response.write(output.getvalue())
+    return response
